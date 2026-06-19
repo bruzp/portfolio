@@ -1,0 +1,131 @@
+services:
+  # Laravel API
+  api:
+    build:
+      context: ./api
+      dockerfile: docker/php/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    container_name: portfolio_api
+    working_dir: /var/www/html
+    volumes:
+      - ./api:/var/www/html
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      REDIS_HOST: redis
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    networks:
+      - portfolio_network
+
+  # Nuxt Frontend
+  web:
+    build:
+      context: ./web
+      dockerfile: docker/nuxt/Dockerfile
+    container_name: portfolio_web
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+      - /app/.nuxt
+    ports:
+      - "3000:3000"
+    environment:
+      NUXT_PUBLIC_API_BASE: http://localhost:8000/api
+    depends_on:
+      - api
+    networks:
+      - portfolio_network
+
+  # PostgreSQL
+  postgres:
+    image: postgres:17
+    container_name: portfolio_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: portfolio_db
+      POSTGRES_USER: portfolio_user
+      POSTGRES_PASSWORD: portfolio_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./api/docker/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - portfolio_network
+
+  # Redis (queues, cache, Reverb pub/sub)
+  redis:
+    image: redis:7-alpine
+    container_name: portfolio_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - portfolio_network
+
+  # MinIO (local S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: portfolio_minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    environment:
+      MINIO_ROOT_USER: portfolio_minio
+      MINIO_ROOT_PASSWORD: portfolio_minio_secret
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - portfolio_network
+
+  # Mailpit (catch local outgoing email)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: portfolio_mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"   # Web UI
+      - "1025:1025"   # SMTP
+    networks:
+      - portfolio_network
+
+  # Laravel Reverb (WebSocket server)
+  reverb:
+    build:
+      context: ./api
+      dockerfile: docker/php/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    container_name: portfolio_reverb
+    working_dir: /var/www/html
+    volumes:
+      - ./api:/var/www/html
+    ports:
+      - "8080:8080"
+    depends_on:
+      - api
+      - redis
+    environment:
+      REDIS_HOST: redis
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    networks:
+      - portfolio_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  portfolio_network:
+    driver: bridge
