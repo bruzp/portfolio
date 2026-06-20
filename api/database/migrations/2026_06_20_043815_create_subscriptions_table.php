@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->id();
-            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
+            $table->string('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignId('plan_id')->constrained();
             $table->foreignId('tenant_payment_method_id')->nullable()->constrained()->nullOnDelete();
 

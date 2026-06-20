@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
-            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
+            $table->string('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignId('subscription_id')->nullable()->constrained()->nullOnDelete(); // null = one-time purchase, not tied to a subscription
             $table->foreignId('plan_id')->nullable()->constrained()->nullOnDelete();         // what was purchased (subscription renewal OR one-time plan/addon)
             $table->foreignId('tenant_payment_method_id')->nullable()->constrained()->nullOnDelete();
