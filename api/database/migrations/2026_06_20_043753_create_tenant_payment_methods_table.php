@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('tenant_payment_methods', function (Blueprint $table) {
             $table->id();
-            $table->foreignUuid('tenant_id')->constrained()->cascadeOnDelete();
+            $table->string('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignId('payment_method_id')->constrained()->cascadeOnDelete();
 
             // The token/ID the PROVIDER gives you to charge this tenant later.
